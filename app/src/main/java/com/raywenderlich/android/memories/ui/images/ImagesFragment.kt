@@ -52,6 +52,7 @@ import com.raywenderlich.android.memories.utils.gone
 import com.raywenderlich.android.memories.utils.toast
 import com.raywenderlich.android.memories.utils.visible
 import com.raywenderlich.android.memories.worker.DownloadImageWorker
+import com.raywenderlich.android.memories.worker.LocalImageCheckWorker
 import kotlinx.android.synthetic.main.fragment_images.*
 
 /**
@@ -103,13 +104,21 @@ class ImagesFragment : Fragment(), ImageOptionsDialogFragment.ImageOptionsListen
       .setRequiresStorageNotLow(true)
       .build()
 
+    val imageCheckerWorker = OneTimeWorkRequestBuilder<LocalImageCheckWorker>()
+      .setInputData(workDataOf("image_path" to imageUrl))
+      .build()
+
     val downloadImageWorker = OneTimeWorkRequestBuilder<DownloadImageWorker>()
       .setInputData(workDataOf("image_path" to imageUrl))
       .setConstraints(constraints)
       .build()
 
     val workManager = WorkManager.getInstance(requireContext())
-    workManager.enqueue(downloadImageWorker)
+
+    workManager.beginWith(imageCheckerWorker)
+      .then(downloadImageWorker)
+      .enqueue()
+
     workManager.getWorkInfoByIdLiveData(downloadImageWorker.id).observe(this, Observer { info ->
       if (info?.state?.isFinished == true) {
         activity?.toast("Image downloaded!")
