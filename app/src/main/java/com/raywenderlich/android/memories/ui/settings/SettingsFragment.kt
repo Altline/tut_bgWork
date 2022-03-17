@@ -37,19 +37,28 @@ package com.raywenderlich.android.memories.ui.settings
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
+import androidx.lifecycle.Observer
+import androidx.work.*
+import com.raywenderlich.android.memories.App
 import com.raywenderlich.android.memories.R
+import com.raywenderlich.android.memories.model.result.Success
+import com.raywenderlich.android.memories.networking.NetworkStatusChecker
 import com.raywenderlich.android.memories.utils.FileUtils
+import com.raywenderlich.android.memories.utils.toast
+import com.raywenderlich.android.memories.worker.ClearLocalStorageWorker
+import com.raywenderlich.android.memories.worker.SynchronizeImagesWorker
 import com.raywenderlich.android.memories.worker.UploadImageWorker
 import kotlinx.android.synthetic.main.fragment_settings.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 /**
  * Displays the user profile information.
@@ -58,6 +67,11 @@ import kotlinx.android.synthetic.main.fragment_settings.*
 private const val REQUEST_CODE_GALLERY = 101
 
 class SettingsFragment : Fragment() {
+
+  private val remoteApi by lazy { App.remoteApi }
+  private val networkStatusChecker by lazy {
+    NetworkStatusChecker(activity?.getSystemService(ConnectivityManager::class.java))
+  }
 
   override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                             savedInstanceState: Bundle?): View? {
@@ -81,6 +95,49 @@ class SettingsFragment : Fragment() {
           REQUEST_CODE_GALLERY
       )
     }
+
+    syncImages.setOnClickListener {
+      networkStatusChecker.performIfConnectedToInternet {
+        GlobalScope.launch(Dispatchers.Main) {
+          syncImages(getImagePaths().toTypedArray())
+        }
+      }
+    }
+  }
+
+  private suspend fun getImagePaths(): List<String> {
+    return remoteApi.getImages().let { result ->
+      if (result is Success) {
+        result.data.map { it.imagePath }
+      } else emptyList()
+    }
+  }
+
+  private suspend fun syncImages(imagePaths: Array<String>) {
+    val constraints = Constraints.Builder()
+      .setRequiredNetworkType(NetworkType.NOT_ROAMING)
+      .setRequiresBatteryNotLow(true)
+      .setRequiresStorageNotLow(true)
+      .build()
+
+    val clearLocalStorageWorker = OneTimeWorkRequestBuilder<ClearLocalStorageWorker>()
+      .setConstraints(constraints)
+      .build()
+
+    val syncImagesWorker = OneTimeWorkRequestBuilder<SynchronizeImagesWorker>()
+      .setInputData(workDataOf("image_paths" to imagePaths))
+      .setConstraints(constraints)
+      .build()
+
+    val workManager = WorkManager.getInstance(requireContext())
+
+    workManager.beginWith(clearLocalStorageWorker)
+        .then(syncImagesWorker)
+        .enqueue()
+
+    workManager.getWorkInfoByIdLiveData(syncImagesWorker.id).observe(this, Observer {
+        activity?.toast("Successfully synchronized")
+    })
   }
 
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
