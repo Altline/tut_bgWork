@@ -4,6 +4,7 @@ import android.app.DownloadManager
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import androidx.work.ListenableWorker
 import com.raywenderlich.android.memories.networking.BASE_URL
 import java.io.*
 import java.net.HttpURLConnection
@@ -115,5 +116,14 @@ object FileUtils {
 
         val downloadManager = context.getSystemService(DownloadManager::class.java)
         downloadManager?.enqueue(request)
+    }
+
+    fun clearLocalStorage(context: Context): Boolean {
+        context.externalMediaDirs.first()?.let { root ->
+            root.listFiles()?.forEach { file ->
+                return file.deleteRecursively()
+            }
+        }
+        return true
     }
 }

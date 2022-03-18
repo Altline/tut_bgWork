@@ -3,6 +3,7 @@ package com.raywenderlich.android.memories.worker
 import android.content.Context
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.raywenderlich.android.memories.utils.FileUtils
 
 class ClearLocalStorageWorker(
     context: Context,
@@ -10,10 +11,9 @@ class ClearLocalStorageWorker(
 ) : Worker(context, workerParameters) {
 
     override fun doWork(): Result {
-        val root = applicationContext.externalMediaDirs.first()
-        root?.listFiles()?.forEach { file ->
-            return if (file.deleteRecursively()) Result.success() else Result.failure()
-        }
-        return Result.success()
+        return if (FileUtils.clearLocalStorage(applicationContext))
+            Result.success()
+        else
+            Result.failure()
     }
 }
