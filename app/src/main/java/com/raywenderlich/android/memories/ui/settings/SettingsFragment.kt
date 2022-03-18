@@ -50,6 +50,7 @@ import com.raywenderlich.android.memories.App
 import com.raywenderlich.android.memories.R
 import com.raywenderlich.android.memories.model.result.Success
 import com.raywenderlich.android.memories.networking.NetworkStatusChecker
+import com.raywenderlich.android.memories.service.SynchronizeImagesService
 import com.raywenderlich.android.memories.utils.FileUtils
 import com.raywenderlich.android.memories.utils.toast
 import com.raywenderlich.android.memories.worker.ClearLocalStorageWorker
@@ -114,30 +115,35 @@ class SettingsFragment : Fragment() {
   }
 
   private suspend fun syncImages(imagePaths: Array<String>) {
-    val constraints = Constraints.Builder()
-      .setRequiredNetworkType(NetworkType.NOT_ROAMING)
-      .setRequiresBatteryNotLow(true)
-      .setRequiresStorageNotLow(true)
-      .build()
+    val intent = Intent().apply {
+      putExtra("image_paths", imagePaths)
+    }
+    SynchronizeImagesService.startWork(requireContext(), intent)
 
-    val clearLocalStorageWorker = OneTimeWorkRequestBuilder<ClearLocalStorageWorker>()
-      .setConstraints(constraints)
-      .build()
-
-    val syncImagesWorker = OneTimeWorkRequestBuilder<SynchronizeImagesWorker>()
-      .setInputData(workDataOf("image_paths" to imagePaths))
-      .setConstraints(constraints)
-      .build()
-
-    val workManager = WorkManager.getInstance(requireContext())
-
-    workManager.beginWith(clearLocalStorageWorker)
-        .then(syncImagesWorker)
-        .enqueue()
-
-    workManager.getWorkInfoByIdLiveData(syncImagesWorker.id).observe(this, Observer {
-        activity?.toast("Successfully synchronized")
-    })
+//    val constraints = Constraints.Builder()
+//      .setRequiredNetworkType(NetworkType.NOT_ROAMING)
+//      .setRequiresBatteryNotLow(true)
+//      .setRequiresStorageNotLow(true)
+//      .build()
+//
+//    val clearLocalStorageWorker = OneTimeWorkRequestBuilder<ClearLocalStorageWorker>()
+//      .setConstraints(constraints)
+//      .build()
+//
+//    val syncImagesWorker = OneTimeWorkRequestBuilder<SynchronizeImagesWorker>()
+//      .setInputData(workDataOf("image_paths" to imagePaths))
+//      .setConstraints(constraints)
+//      .build()
+//
+//    val workManager = WorkManager.getInstance(requireContext())
+//
+//    workManager.beginWith(clearLocalStorageWorker)
+//        .then(syncImagesWorker)
+//        .enqueue()
+//
+//    workManager.getWorkInfoByIdLiveData(syncImagesWorker.id).observe(this, Observer {
+//        activity?.toast("Successfully synchronized")
+//    })
   }
 
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
