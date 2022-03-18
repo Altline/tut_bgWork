@@ -28,6 +28,11 @@ class SynchronizeImagesService : Service() {
             FileUtils.queueImageDownload(applicationContext, path)
         }
 
+        stopForeground(true)
+        sendBroadcast(Intent().apply {
+            action = ACTION_IMAGES_SYNCHRONIZED
+        })
+
         return START_NOT_STICKY
     }
 
