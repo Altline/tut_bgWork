@@ -1,5 +1,6 @@
 package com.raywenderlich.android.memories.utils
 
+import android.app.DownloadManager
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
@@ -99,5 +100,20 @@ object FileUtils {
 
             output.flush()
         }
+    }
+
+    fun queueImageDownload(context: Context, downloadPath: String) {
+        val file = File(context.externalMediaDirs.first(), downloadPath)
+
+        val request = DownloadManager.Request(Uri.parse("$BASE_URL/files/$downloadPath"))
+            .setTitle("Image download")
+            .setDescription("Downloading")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+            .setDestinationUri(Uri.fromFile(file))
+            .setAllowedOverMetered(true)
+            .setAllowedOverRoaming(false)
+
+        val downloadManager = context.getSystemService(DownloadManager::class.java)
+        downloadManager?.enqueue(request)
     }
 }

@@ -34,9 +34,7 @@
 
 package com.raywenderlich.android.memories.ui.images
 
-import android.app.DownloadManager
 import android.net.ConnectivityManager
-import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -49,19 +47,17 @@ import com.raywenderlich.android.memories.App
 import com.raywenderlich.android.memories.R
 import com.raywenderlich.android.memories.model.Image
 import com.raywenderlich.android.memories.model.result.Success
-import com.raywenderlich.android.memories.networking.BASE_URL
 import com.raywenderlich.android.memories.networking.NetworkStatusChecker
 import com.raywenderlich.android.memories.ui.images.dialog.ImageOptionsDialogFragment
+import com.raywenderlich.android.memories.utils.FileUtils
 import com.raywenderlich.android.memories.utils.gone
 import com.raywenderlich.android.memories.utils.toast
 import com.raywenderlich.android.memories.utils.visible
-import com.raywenderlich.android.memories.worker.DownloadImageWorker
 import com.raywenderlich.android.memories.worker.LocalImageCheckWorker
 import kotlinx.android.synthetic.main.fragment_images.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import java.io.File
 
 /**
  * Fetches and displays notes from the API.
@@ -123,18 +119,7 @@ class ImagesFragment : Fragment(), ImageOptionsDialogFragment.ImageOptionsListen
       if (info?.state?.isFinished == true) {
         val isDownloaded = info.outputData.getBoolean("is_downloaded", false)
         if (!isDownloaded) {
-          val file = File(requireContext().externalMediaDirs.first(), imageUrl)
-
-          val request = DownloadManager.Request(Uri.parse("$BASE_URL/files/$imageUrl"))
-            .setTitle("Image download")
-            .setDescription("Downloading")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-            .setDestinationUri(Uri.fromFile(file))
-            .setAllowedOverMetered(true)
-            .setAllowedOverRoaming(false)
-
-          val downloadManager = requireContext().getSystemService(DownloadManager::class.java)
-          downloadManager?.enqueue(request)
+          FileUtils.queueImageDownload(requireContext(), imageUrl)
         }
       }
     })
