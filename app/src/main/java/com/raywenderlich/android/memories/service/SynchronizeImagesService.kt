@@ -1,26 +1,64 @@
 package com.raywenderlich.android.memories.service
 
-import android.content.Context
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Intent
-import androidx.core.app.JobIntentService
+import android.os.Build
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import com.raywenderlich.android.memories.ui.main.MainActivity
 import com.raywenderlich.android.memories.utils.FileUtils
 
-class SynchronizeImagesService : JobIntentService() {
+const val NOTIFICATION_CHANNEL_NAME = "Synchronize service channel"
+const val NOTIFICATION_CHANNEL_ID = "Synchronize ID"
 
-    companion object {
-        private const val JOB_ID = 20
+class SynchronizeImagesService : Service() {
 
-        fun startWork(context: Context, intent: Intent) {
-            enqueueWork(context, SynchronizeImagesService::class.java, JOB_ID, intent)
-        }
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
-    override fun onHandleWork(intent: Intent) {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        showNotification()
+
         FileUtils.clearLocalStorage(applicationContext)
 
-        val imagePaths = intent.getStringArrayExtra("image_paths")
+        val imagePaths = intent?.getStringArrayExtra("image_paths")
         imagePaths?.forEach { path ->
             FileUtils.queueImageDownload(applicationContext, path)
+        }
+
+        return START_NOT_STICKY
+    }
+
+    private fun showNotification() {
+        createNotificationChannel()
+
+        val notificationIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
+
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Synchronization service")
+            .setContentText("Downloading image")
+            .setContentIntent(pendingIntent)
+            .build()
+
+        startForeground(1, notification)
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val serviceChannel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(serviceChannel)
         }
     }
 }

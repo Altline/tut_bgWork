@@ -115,10 +115,10 @@ class SettingsFragment : Fragment() {
   }
 
   private suspend fun syncImages(imagePaths: Array<String>) {
-    val intent = Intent().apply {
+    val intent = Intent(requireContext(), SynchronizeImagesService::class.java).apply {
       putExtra("image_paths", imagePaths)
     }
-    SynchronizeImagesService.startWork(requireContext(), intent)
+    activity?.startService(intent)
 
 //    val constraints = Constraints.Builder()
 //      .setRequiredNetworkType(NetworkType.NOT_ROAMING)
